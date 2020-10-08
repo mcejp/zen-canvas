@@ -1,0 +1,3 @@
+# inspired
+
+    manage.py runserver
