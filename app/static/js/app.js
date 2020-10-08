@@ -1,5 +1,6 @@
 // TODO: more rigorous state replication might be in order
-// TODO: 0 at center
+// TODO: 0,0 at center
+// FIXME: what if Image add request takes so long that another Update requests finishes in the meantime?
 
 // From https://gist.github.com/ahtcx/0cd94e62691f539160b32ecda18af3d6
 // Merge a `source` object to a `target` recursively
@@ -38,12 +39,13 @@ function onBackendError() {
 }
 
 class ImageModel {
-    constructor(uuid, mime_type, w, h, data) {
+    constructor(uuid, mimeType, w, h, originalFilename, base64Data) {
         this.uuid = uuid;
-        this.mime_type = mime_type;
+        this.mimeType = mimeType;
         this.w = w;
         this.h = h;
-        this.data = data;
+        this.originalFilename = originalFilename;
+        this.base64Data = base64Data;
     }
 }
 
@@ -190,7 +192,7 @@ class Canvas {
         });
     }
 
-    addImageFromDataUrl(clientX, clientY, mimeType, data) {
+    addImageFromDataUrl(clientX, clientY, mimeType, originalFilename, dataUrl) {
         // x_client = x_transform + x_DOM * scale
         // x_DOM = (x_client - x_transform) / scale
         // console.log("drop at", clientX, clientY);
@@ -205,13 +207,15 @@ class Canvas {
         img.style.position = "absolute";
         img.style.left = `${absX}px`;
         img.style.top =  `${absY}px`;
-        img.src = data;
+        img.src = dataUrl;
         this.div.appendChild(img);
 
         img.addEventListener("load", () => {
             // create models
             // TODO: de-duplicate images
-            const image = new ImageModel(uuidv4(), mimeType, img.naturalWidth, img.naturalHeight, data);
+            const base64Data = dataUrl.substr(dataUrl.indexOf(",") + 1)
+
+            const image = new ImageModel(uuidv4(), mimeType, img.naturalWidth, img.naturalHeight, originalFilename, base64Data);
             const placement = new ImagePlacementModel(uuidv4(), image.uuid, absX, absY, image.w, image.h);
 
             this.backend.updateModel({
@@ -233,7 +237,7 @@ class Canvas {
             img.style.position = "absolute";
             img.style.left = `${placement.x}px`;
             img.style.top = `${placement.y}px`;
-            img.src = image.data;
+            img.src = `image/${placement.imageUuid}`;
             this.div.appendChild(img);
         }
         else {
@@ -342,17 +346,14 @@ window.addEventListener("load", () => {
                 for (var i = 0; i < ev.dataTransfer.items.length; i++) {
                     // If dropped items aren't files, reject them
                     if (ev.dataTransfer.items[i].kind === 'file') {
-                        var file = ev.dataTransfer.items[i].getAsFile();
+                        const file = ev.dataTransfer.items[i].getAsFile();
                         console.log('A:... file[' + i + '].name = ' + file.name);
 
                         if (file.type === "image/gif" || file.type === "image/jpeg" || file.type === "image/png") {
                             var reader = new FileReader();
-                            const mimeType = file.type;
 
                             reader.onload = (ev2) => {
-                                // Should look like data:,<jibberish_data> based on which method you called
-                                // console.log(ev2.target.result);
-                                canvas.addImageFromDataUrl(ev.clientX, ev.clientY, mimeType, ev2.target.result);
+                                canvas.addImageFromDataUrl(ev.clientX, ev.clientY, file.type, file.name, ev2.target.result);
                             };
                             reader.onerror = (ev) => {
                                 console.log("Reader error", ev);

@@ -1,7 +1,9 @@
+import base64
 from dataclasses import dataclass
 import datetime
 from typing import Optional
 import uuid
+
 
 # watch out, SQLalchemy is buggy for dataclass with default values
 
@@ -21,9 +23,22 @@ class Image:
     mime_type: str
     w: int
     h: int
-    data: str
+    original_filename: str
+    raw_data: Optional[bytes]
     when_updated: Optional[datetime.datetime]
 
+    @staticmethod
+    def from_json(model):
+        return Image(uuid.UUID(model["uuid"]),
+                     model["mimeType"],
+                     model["w"],
+                     model['h'],
+                     model["originalFilename"],
+                     raw_data=base64.b64decode(model["base64Data"].encode()),
+                     when_updated=None)
+
+    def to_json(self):
+        return dict(uuid=self.uuid, mimeType=self.mime_type, w=self.w, h=self.h)
 
 @dataclass
 class ImagePlacement:
@@ -34,3 +49,9 @@ class ImagePlacement:
     w: float
     h: float
     when_updated: Optional[datetime.datetime]
+
+    @staticmethod
+    def from_json(model):
+        return ImagePlacement(uuid.UUID(model["uuid"]), uuid.UUID(model["imageUuid"]),
+                              model["x"], model['y'], model["w"], model['h'],
+                              when_updated=None)

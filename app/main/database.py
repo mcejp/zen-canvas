@@ -5,19 +5,15 @@ from flask import g
 
 import sqlalchemy
 from sqlalchemy import create_engine, desc, TypeDecorator
-from sqlalchemy import Table, MetaData, Column, DateTime, Float, Integer, String
-from sqlalchemy.orm import mapper, sessionmaker
-from sqlalchemy.types import CHAR
+from sqlalchemy import Table, MetaData, Column, DateTime, Float, Integer, LargeBinary, String
+from sqlalchemy.orm import mapper, sessionmaker, deferred
 
 from .. import models
 
 metadata = MetaData()
 
 class UuidColumn(TypeDecorator):
-    """Safely coerce Python bytestrings to Unicode
-    before passing off to the database."""
-
-    impl = CHAR
+    impl = sqlalchemy.types.CHAR
 
     def process_bind_param(self, value, dialect):
         return str(value)
@@ -28,7 +24,8 @@ image_table = Table('image', metadata,
        Column("mime_type", String(64), nullable=False),
        Column('w', Integer, nullable=False),
        Column('h', Integer, nullable=False),
-       Column('data', String, nullable=False),
+       Column('original_filename', String, nullable=True),
+       Column('raw_data', LargeBinary, nullable=False),
        Column('when_updated', DateTime, nullable=True),
        )
 
@@ -51,7 +48,9 @@ view_table = Table('view', metadata,
         )
 
 
-mapper(models.Image, image_table)
+mapper(models.Image, image_table, properties={
+    'raw_data': deferred(image_table.c.raw_data),
+})
 mapper(models.ImagePlacement, image_placement_table)
 mapper(models.View, view_table)
 
