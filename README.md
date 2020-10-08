@@ -1,5 +1,7 @@
 # inspired
 
+![screenshot](doc/screenshot.jpg)
+
     manage.py runserver
 
 ## Controls
