@@ -37,10 +37,13 @@ def get_model():
             ret["imagePlacements"][p.uuid] = dict(uuid=p.uuid, imageUuid=p.image_uuid, x=p.x, y=p.y, w=p.w, h=p.h)
 
             # fetch image
-            image = db.get_image_by_uuid(uuid.UUID(p.image_uuid))
+            image = db.get_image_by_uuid(p.image_uuid)
+
+            # FIXME: transmit images more efficiently (direct HTTP2 GET)
             ret["images"][image.uuid] = dict(uuid=image.uuid, data=image.data)
 
     return ret
+
 
 @main.route('/model', methods=['POST'])
 def post_model():
@@ -71,5 +74,13 @@ def post_model():
             view.pan_y = value["pan_y"]
             view.zoom = value["zoom"]
             db.save_updates()
+
+    return dict()
+
+
+@main.route('/imagePlacement', methods=['DELETE'])
+def delete_image_placement():
+    db = get_db()
+    db.delete_image_placement(uuid.UUID(request.json["uuid"]))
 
     return dict()

@@ -77,25 +77,23 @@ class Database:
 
     def add_or_update_image_placement(self, placement: models.ImagePlacement) -> None:
         placement.when_updated = datetime.datetime.now()
-        self.session.add(placement)
 
-        try:
-            self.session.commit()
-        except sqlalchemy.exc.IntegrityError as ex:
-            # print(repr(str(ex.orig)))
-            if "UNIQUE constraint failed" in str(ex.orig):
-                image_placement_table.update().where(image_placement_table.c.uuid == placement.uuid). \
-                    values(image_uuid=placement.image_uuid,
-                           x=placement.x,
-                           y=placement.y,
-                           w=placement.w,
-                           h=placement.h,
-                           when_updated=placement.when_updated)
-                self.session.commit()
-            else:
-                raise
-        finally:
-            self.session.rollback()
+        # check if already exists
+        existing = self.session.query(models.ImagePlacement).filter_by(uuid=placement.uuid).first()
+        if existing is not None:
+            existing.x = placement.x
+            existing.y = placement.y
+            existing.w = placement.w
+            existing.h = placement.h
+            existing.when_updated = placement.when_updated
+        else:
+            self.session.add(placement)
+
+        self.session.commit()
+
+    def delete_image_placement(self, uuid: uuid.UUID) -> None:
+        self.session.query(models.ImagePlacement).filter_by(uuid=uuid).delete()
+        self.session.commit()
 
     def get_all_placements_for_view(self, view: models.View) -> [models.ImagePlacement]:
         # TODO: filter on view (once implemented)
