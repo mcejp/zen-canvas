@@ -1,4 +1,4 @@
-# inspired
+# Zen Canvas
 
 ![screenshot](doc/screenshot.jpg)
 
