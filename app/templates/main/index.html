@@ -36,10 +36,43 @@ html, body {
     align-items: center;
 }
 
+#ui-overlay {
+    position: absolute;
+    width:100%;
+    height:100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+
+    pointer-events: none;
+}
+
+#ui-overlay>* {
+    /* parent container has pointer-events none, this restores clickability */
+    pointer-events: auto;
+}
+
+#ui-overlay .text-editor {
+    width: 600px;
+    font-size: 24px;
+}
+
 .selected {
     border: 2px dashed lightcoral;
     margin-left: -2px;
     margin-top: -2px;
+}
+
+.image-placement, .text-placement {
+    position: absolute;
+
+    /* required by Draggable */
+    touch-action: none;
+}
+
+.text-placement {
+    user-select: none;
+    white-space: nowrap;
 }
     </style>
 
@@ -52,6 +85,7 @@ html, body {
 <div id="thecontainer">
     <div id="thecanvas"></div>
     <div id="placeholder">Your Zen Canvas is loading.</div>
+    <div id="ui-overlay"></div>
 </div>
 </body>
 </html>

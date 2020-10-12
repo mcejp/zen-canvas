@@ -39,6 +39,16 @@ image_placement_table = Table('image_placement', metadata,
         Column('when_updated', DateTime, nullable=True),
         )
 
+text_placement_table = Table('text_placement', metadata,
+        Column('uuid', UuidColumn, primary_key=True),
+        Column('view_uuid', UuidColumn, nullable=False),
+        Column('x', Float, nullable=False),
+        Column('y', Float, nullable=False),
+        Column('text', String, nullable=False),
+        Column('font_size_px', Integer, nullable=False),
+        Column('when_updated', DateTime, nullable=True),
+        )
+
 view_table = Table('view', metadata,
         Column('uuid', UuidColumn, primary_key=True),
         Column("pan_x", Float, nullable=False),
@@ -52,6 +62,7 @@ mapper(models.Image, image_table, properties={
     'raw_data': deferred(image_table.c.raw_data),
 })
 mapper(models.ImagePlacement, image_placement_table)
+mapper(models.TextPlacement, text_placement_table)
 mapper(models.View, view_table)
 
 
@@ -90,15 +101,37 @@ class Database:
 
         self.session.commit()
 
+    def add_or_update_text_placement(self, placement: models.TextPlacement) -> None:
+        placement.when_updated = datetime.datetime.now()
+
+        # check if already exists
+        existing = self.session.query(models.TextPlacement).filter_by(uuid=placement.uuid).first()
+        if existing is not None:
+            existing.x = placement.x
+            existing.y = placement.y
+            existing.text = placement.text
+            existing.font_size_px = placement.font_size_px
+            existing.when_updated = placement.when_updated
+        else:
+            self.session.add(placement)
+
+        self.session.commit()
+
     def delete_image_placement(self, uuid: uuid.UUID) -> None:
         self.session.query(models.ImagePlacement).filter_by(uuid=uuid).delete()
         self.session.commit()
 
-    def get_all_placements_for_view(self, view: models.View) -> [models.ImagePlacement]:
-        # TODO: filter on view (once implemented)
+    def delete_text_placement(self, uuid: uuid.UUID) -> None:
+        self.session.query(models.TextPlacement).filter_by(uuid=uuid).delete()
+        self.session.commit()
 
-        q = self.session.query(models.ImagePlacement)
-        return q.all()
+    def get_all_placements_for_view(self, view: models.View) -> [models.ImagePlacement, models.TextPlacement]:
+        # TODO: filter on view (once implemented)
+        images = self.session.query(models.ImagePlacement)
+
+        texts = self.session.query(models.TextPlacement).filter_by(view_uuid=view.uuid)
+
+        return images.all(), texts.all()
 
     def get_image_by_uuid(self, uuid: uuid.UUID) -> models.Image:
         q = self.session.query(models.Image).filter_by(uuid=uuid)
@@ -113,10 +146,14 @@ class Database:
             view = models.View(uuid=uuid.uuid4(), pan_x=0, pan_y=0, zoom=1,
                         when_updated=datetime.datetime.now()    # FIXME: plug in UPDATE/INSERT
                         )
-            self.session.add(view)
-            self.session.commit()
 
-            # TODO: put sumthin innit!
+            text = models.TextPlacement(uuid=uuid.uuid4(), view_uuid=view.uuid, x=0, y=0,
+                                        text="Hello. This is your Zen Canvas. Why not drop some images here?",
+                                        font_size_px=12, when_updated=datetime.datetime.now())
+
+            self.session.add(view)
+            self.session.add(text)
+            self.session.commit()
 
             q = self.session.query(models.View)
 

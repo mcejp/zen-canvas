@@ -58,6 +58,25 @@ class ImagePlacementModel {
         this.w = w;
         this.h = h;
     }
+
+    static from(json) {
+        return Object.assign(new ImagePlacementModel(), json);
+    }
+}
+
+class TextPlacementModel {
+    constructor(uuid, viewUuid, x, y, text, fontSizePx) {
+        this.uuid = uuid;
+        this.viewUuid = viewUuid;
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.fontSizePx = fontSizePx;
+    }
+
+    static from(json) {
+        return Object.assign(new TextPlacementModel(), json);
+    }
 }
 
 // class ThrottledRequest {
@@ -78,6 +97,14 @@ class Backend {
 
     scheduledUpdateData = null;
 
+    addOrUpdateTextPlacement(placement) {
+        this.updateModel({
+            textPlacements: {
+                [placement.uuid]: placement
+            }
+        });
+    }
+
     async getModel() {
         const response = await fetch("model")
 
@@ -93,6 +120,16 @@ class Backend {
 
     deleteImagePlacement(uuid) {
         const promise = fetch("imagePlacement", {
+            method: "DELETE",
+            body: JSON.stringify({uuid: uuid}),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        });
+    }
+
+    deleteTextPlacement(uuid) {
+        const promise = fetch("textPlacement", {
             method: "DELETE",
             body: JSON.stringify({uuid: uuid}),
             headers: {
@@ -148,11 +185,17 @@ class Backend {
 class Canvas {
     selection = null;
 
+    clientX = undefined;
+    clientY = undefined;
+
+    defaultFontSizePx = 14;
+
     constructor(canvasDiv, backend, modelInitial) {
         this.div = canvasDiv;
-        this.div.appendChild(document.createTextNode("Hello. This is your Zen Canvas. Drop some images here!"));
 
         this.backend = backend;
+
+        this.view = modelInitial.view;
 
         this.panzoom = panzoom(this.div, {
             // maxScale: 5
@@ -173,38 +216,45 @@ class Canvas {
 
         for (const [uuid, placement] of Object.entries(modelInitial.imagePlacements)) {
             const image = modelInitial.images[placement.imageUuid];
-            this._addImagePlacement(placement, image, null)
+            this._addImagePlacement(ImagePlacementModel.from(placement), image, null)
+        }
+
+        for (const placement of Object.values(modelInitial.textPlacements)) {
+            this._addTextPlacement(TextPlacementModel.from(placement))
         }
 
         document.addEventListener("keyup", (ev) => {
-            if(ev.key === "Delete") {
-                this._deleteSelection();
+            console.log(ev);
+            const shortcuts = {
+                // delete selected
+                Delete: (ev) =>     this._deleteSelection(),
+                // clear selection
+                Escape: (ev) =>     this._select(null),
+                // scale selection up
+                PageUp: (ev) =>     this._resizeSelection(1),
+                // scale selection down
+                PageDown: (ev) =>   this._resizeSelection(-1),
+                // insert Text object
+                t: (ev) =>          this._addTextAtMouse("Click to edit me!"),
             }
-            else if(ev.key === "Escape") {
-                this._select(null);
+
+            if (shortcuts.hasOwnProperty(ev.key)) {
+                shortcuts[ev.key](ev);
+                console.log("handled", ev);
             }
-            else if(ev.key === "PageUp") {
-                this._resizeSelection(1);
-            }
-            else if(ev.key === "PageDown") {
-                this._resizeSelection(-1);
-            }
+        });
+
+        document.addEventListener("mousemove", (ev) => {
+            [this.clientX, this.clientY] = [ev.clientX, ev.clientY];
         });
     }
 
     addImageFromDataUrl(clientX, clientY, mimeType, originalFilename, dataUrl) {
-        // x_client = x_transform + x_DOM * scale
-        // x_DOM = (x_client - x_transform) / scale
         // console.log("drop at", clientX, clientY);
-
-        // calculate position within canvas, considering the pan & zoom
-        const {x: panX, y: panY, scale} = this.panzoom.getTransform();
-
-        const absX = (clientX - panX) / scale;
-        const absY = (clientY - panY) / scale;
+        const [absX, absY] = this._clientToCanvasCoords(clientX, clientY);
 
         const img = document.createElement("img");
-        img.style.position = "absolute";
+        img.className = "image-placement";
         img.style.left = `${absX}px`;
         img.style.top =  `${absY}px`;
         img.src = dataUrl;
@@ -234,7 +284,7 @@ class Canvas {
     _addImagePlacement(placement, image, img) {
         if (!img) {
             img = document.createElement("img");
-            img.style.position = "absolute";
+            img.className = "image-placement";
             img.style.left = `${placement.x}px`;
             img.style.top = `${placement.y}px`;
             img.src = `image/${placement.imageUuid}`;
@@ -246,8 +296,6 @@ class Canvas {
 
         img.style.width = `${placement.w}px`;
         img.style.height = `${placement.h}px`;
-
-        img.style.touchAction = "none"
 
         interact(img).draggable({
             listeners: {
@@ -273,28 +321,105 @@ class Canvas {
         })
     }
 
+    _addTextPlacement(placement) {
+        const element = document.createElement("div");
+        element.className = "text-placement";
+        element.style.left = `${placement.x}px`;
+        element.style.top = `${placement.y}px`;
+        element.style.fontSize = `${placement.fontSizePx}px`;
+        element.innerText = placement.text;
+        this.div.appendChild(element);
+
+        interact(element).draggable({
+            listeners: {
+                start (event) {
+                    // console.log(event.type, event.target)
+                },
+                move: (event) => {
+                    placement.x = parseInt(event.target.style.left) + event.dx / this.panzoom.getTransform().scale;
+                    placement.y = parseInt(event.target.style.top) + event.dy / this.panzoom.getTransform().scale;
+
+                    event.target.style.top = `${placement.y}px`
+                    event.target.style.left = `${placement.x}px`
+
+                    this.backend.addOrUpdateTextPlacement(placement);
+                },
+            }
+        })
+
+        element.addEventListener("mousedown", (ev) => {
+            this._select(element, placement)
+        })
+    }
+
+    _addTextAtMouse(text) {
+        if (this.clientX === undefined || this.clientY === undefined) {
+            console.log("Warning: no client x,y");
+            return;
+        }
+
+        const [absX, absY] = this._clientToCanvasCoords(this.clientX, this.clientY);
+
+        const placement = new TextPlacementModel(uuidv4(), this.view.uuid, absX, absY, text, this.defaultFontSizePx);
+        this._addTextPlacement(placement);
+
+        this.backend.addOrUpdateTextPlacement(placement);
+    }
+
+    _clientToCanvasCoords(clientX, clientY) {
+        // x_client = x_transform + x_DOM * scale
+        // x_DOM = (x_client - x_transform) / scale
+
+        // calculate position within canvas, considering the pan & zoom
+        const {x: panX, y: panY, scale} = this.panzoom.getTransform();
+
+        const absX = (clientX - panX) / scale;
+        const absY = (clientY - panY) / scale;
+
+        return [absX, absY];
+    }
+
     _deleteSelection() {
         if (this.selection !== null) {
-            this.selection.img.remove();
-            this.backend.deleteImagePlacement(this.selection.placement.uuid);
+            this.selection.element.remove();
+
+            if (this.selection.placement instanceof ImagePlacementModel) {
+                this.backend.deleteImagePlacement(this.selection.placement.uuid);
+            }
+            else if (this.selection.placement instanceof TextPlacementModel) {
+                this.backend.deleteTextPlacement(this.selection.placement.uuid);
+            }
+
             this.selection = null;
         }
     }
 
     _resizeSelection(sign) {
         if (this.selection !== null) {
-            const factor = Math.exp(sign * 0.2);
-            const placement = this.selection.placement;
+            if (this.selection.placement instanceof ImagePlacementModel) {
+                const factor = Math.exp(sign * 0.2);
+                const placement = this.selection.placement;
 
-            placement.w *= factor;
-            placement.h *= factor;
+                placement.w *= factor;
+                placement.h *= factor;
 
-            this.selection.img.style.width = `${placement.w}px`;
-            this.selection.img.style.height = `${placement.h}px`;
+                this.selection.element.style.width = `${placement.w}px`;
+                this.selection.element.style.height = `${placement.h}px`;
 
-            this.backend.updateModel({
-                imagePlacements: { [placement.uuid]: placement }
-            });
+                this.backend.updateModel({
+                    imagePlacements: { [placement.uuid]: placement }
+                });
+            }
+            else if (this.selection.placement instanceof TextPlacementModel) {
+                const placement = this.selection.placement;
+
+                // chosen because 10px * exp(0.14) rounds to 12px
+                placement.fontSizePx = Math.round(placement.fontSizePx * Math.exp(sign * 0.14));
+
+                this.selection.element.style.fontSize = `${placement.fontSizePx}px`;
+
+                this.backend.addOrUpdateTextPlacement(placement);
+            }
         }
     }
 
@@ -304,14 +429,32 @@ class Canvas {
         })
     }
 
-    _select(img, placement) {
+    _select(element, placement) {
+        const uiOverlay = document.getElementById("ui-overlay")
+
         if (this.selection !== null) {
-            this.selection.img.classList.remove("selected")
+            this.selection.element.classList.remove("selected")
+            uiOverlay.innerHTML = "";
         }
 
-        if (img !== null) {
-            img.classList.add("selected")
-            this.selection = {img: img, placement: placement}
+        if (element !== null) {
+            element.classList.add("selected")
+            this.selection = {element: element, placement: placement}
+
+            if (placement instanceof TextPlacementModel) {
+                const input = document.createElement("input");
+                input.type = "text";
+                input.className = "text-editor";
+                input.value = placement.text;
+                uiOverlay.appendChild(input);
+
+                input.addEventListener("input", (ev) => {
+                    console.log("EDIT", ev)
+                    placement.text = input.value;
+                    element.innerText = placement.text;
+                    this.backend.addOrUpdateTextPlacement(placement)
+                })
+            }
         }
         else {
             this.selection = null;

@@ -24,22 +24,26 @@ def get_model():
     db = get_db()
 
     view = db.get_some_view()
-    print(view)
+    # print(view)
 
     ret = dict(images={},
                imagePlacements={},
+               textPlacements={},
+               view=dict(uuid=str(view.uuid)),
                viewTransform=dict(pan_x=view.pan_x, pan_y=view.pan_y, zoom=view.zoom)
                )
 
-    placements = db.get_all_placements_for_view(view)
+    image_placements, text_placements = db.get_all_placements_for_view(view)
 
-    for p in placements:
-        if isinstance(p, models.ImagePlacement):
-            ret["imagePlacements"][p.uuid] = dict(uuid=p.uuid, imageUuid=p.image_uuid, x=p.x, y=p.y, w=p.w, h=p.h)
+    for p in image_placements:
+        ret["imagePlacements"][p.uuid] = dict(uuid=p.uuid, imageUuid=p.image_uuid, x=p.x, y=p.y, w=p.w, h=p.h)
 
-            # add image metadata
-            image = db.get_image_by_uuid(p.image_uuid)
-            ret["images"][image.uuid] = image.to_json()
+        # add image metadata
+        image = db.get_image_by_uuid(p.image_uuid)
+        ret["images"][image.uuid] = image.to_json()
+
+    for p in text_placements:
+        ret["textPlacements"][p.uuid] = p.to_json()
 
     return ret
 
@@ -60,6 +64,10 @@ def post_model():
             for uuid, model in value.items():
                 placement = models.ImagePlacement.from_json(model)
                 db.add_or_update_image_placement(placement)
+        elif key == "textPlacements":
+            for uuid, model in value.items():
+                placement = models.TextPlacement.from_json(model)
+                db.add_or_update_text_placement(placement)
         elif key == "viewTransform":
             # find a view, since we don't handle it properly now
             view = db.get_some_view()
@@ -75,6 +83,13 @@ def post_model():
 def delete_image_placement():
     db = get_db()
     db.delete_image_placement(uuid.UUID(request.json["uuid"]))
+
+    return dict()
+
+@main.route('/textPlacement', methods=['DELETE'])
+def delete_text_placement():
+    db = get_db()
+    db.delete_text_placement(uuid.UUID(request.json["uuid"]))
 
     return dict()
 
