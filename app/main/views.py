@@ -86,4 +86,8 @@ def get_image(uuid):
     return send_file(io.BytesIO(image.raw_data),
                      # as_attachment=True,
                      # attachment_filename=image.original_filename,
-                     mimetype=image.mime_type)
+                     mimetype=image.mime_type,
+                     cache_timeout=365 * 24 * 3600,     # cache up to a year
+                                                        # this is not the best, because it does not set the new
+                                                        # `Cache-Control: immutable` flag
+                     )
