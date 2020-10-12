@@ -203,6 +203,14 @@ class Canvas {
                 const middleMouseButton = 1;
                 const shouldIgnore = (e.button !== middleMouseButton);
                 return shouldIgnore;
+            },
+
+            filterKey: function(e, dx, dy, dz) {
+                let shouldIgnore = false;
+                if (e.target.tagName.toLowerCase() === "input") {
+                    shouldIgnore = true;
+                }
+                return shouldIgnore;
             }
         })
 
@@ -224,7 +232,10 @@ class Canvas {
         }
 
         document.addEventListener("keyup", (ev) => {
-            console.log(ev);
+            if (ev.target.tagName.toLowerCase() === "input") {
+                return;
+            }
+
             const shortcuts = {
                 // delete selected
                 Delete: (ev) =>     this._deleteSelection(),
