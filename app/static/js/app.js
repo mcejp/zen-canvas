@@ -138,6 +138,15 @@ class Backend {
         });
     }
 
+    // FIXME: make sure we do not keep uploading the image over and over!
+    updateImage(image) {
+        this.updateModel({
+            images: {
+                [image.uuid]: image,
+            }
+        })
+    }
+
     updateModel(changes) {
         let sendDelay;
         // console.log(changes, "VS", this.scheduledUpdateData)
@@ -328,7 +337,7 @@ class Canvas {
         })
 
         img.addEventListener("mousedown", (ev) => {
-            this._select(img, placement)
+            this._select(img, placement, {image: image})
         })
     }
 
@@ -440,27 +449,47 @@ class Canvas {
         })
     }
 
-    _select(element, placement) {
-        const uiOverlay = document.getElementById("ui-overlay")
+    _select(element, placement, extras) {
+        const uiContent = document.getElementById("ui-content")
 
         if (this.selection !== null) {
             this.selection.element.classList.remove("selected")
-            uiOverlay.innerHTML = "";
+            uiContent.innerHTML = "";
         }
 
         if (element !== null) {
             element.classList.add("selected")
             this.selection = {element: element, placement: placement}
 
-            if (placement instanceof TextPlacementModel) {
-                const input = document.createElement("input");
-                input.type = "text";
-                input.className = "text-editor";
+            if (placement instanceof ImagePlacementModel) {
+                const editor = document.getElementById("image-placement-editor").cloneNode(true);
+                uiContent.appendChild(editor);
+
+                const image = extras.image;
+
+                const bindImageProperty = (selector, attributeName) => {
+                    const input = editor.querySelector(selector);
+                    console.log(image, attributeName);
+                    input.value = image[attributeName];
+
+                    input.addEventListener("input", (ev) => {
+                        image[attributeName] = input.value;
+                        this.backend.updateImage(image);
+                    })
+                };
+
+                bindImageProperty('[data-id="original-filename"]', "originalFilename");
+                bindImageProperty('[data-id="source-url"]', "sourceUrl");
+                bindImageProperty('[data-id="note"]', "note");
+            }
+            else if (placement instanceof TextPlacementModel) {
+                const editor = document.getElementById("text-placement-editor").cloneNode(true);
+                uiContent.appendChild(editor);
+
+                const input = editor.querySelector("input");
                 input.value = placement.text;
-                uiOverlay.appendChild(input);
 
                 input.addEventListener("input", (ev) => {
-                    console.log("EDIT", ev)
                     placement.text = input.value;
                     element.innerText = placement.text;
                     this.backend.addOrUpdateTextPlacement(placement)

@@ -25,6 +25,8 @@ image_table = Table('image', metadata,
        Column('w', Integer, nullable=False),
        Column('h', Integer, nullable=False),
        Column('original_filename', String, nullable=True),
+       Column('source_url', String(1024), nullable=True),
+       Column('note', String, nullable=True),
        Column('raw_data', LargeBinary, nullable=False),
        Column('when_updated', DateTime, nullable=True),
        )
@@ -82,14 +84,23 @@ class Database:
 
     def add_image(self, image: models.Image) -> None:
         image.when_updated = datetime.datetime.now()
-        self.session.add(image)
+
+        # check if already exists
+        existing: models.Image = self.session.query(models.Image).filter_by(uuid=image.uuid).first()
+        if existing is not None:
+            existing.source_url = image.source_url
+            existing.note = image.note
+            existing.when_updated = image.when_updated
+        else:
+            self.session.add(image)
+
         self.session.commit()
 
     def add_or_update_image_placement(self, placement: models.ImagePlacement) -> None:
         placement.when_updated = datetime.datetime.now()
 
         # check if already exists
-        existing = self.session.query(models.ImagePlacement).filter_by(uuid=placement.uuid).first()
+        existing: models.ImagePlacement = self.session.query(models.ImagePlacement).filter_by(uuid=placement.uuid).first()
         if existing is not None:
             existing.x = placement.x
             existing.y = placement.y

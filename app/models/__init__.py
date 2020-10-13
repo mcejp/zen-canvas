@@ -23,22 +23,27 @@ class Image:
     mime_type: str
     w: int
     h: int
-    original_filename: str
+    original_filename: Optional[str]
+    source_url: Optional[str]
+    note: Optional[str]
     raw_data: Optional[bytes]
     when_updated: Optional[datetime.datetime]
 
     @staticmethod
     def from_json(model):
-        return Image(uuid.UUID(model["uuid"]),
-                     model["mimeType"],
-                     model["w"],
-                     model['h'],
-                     model["originalFilename"],
-                     raw_data=base64.b64decode(model["base64Data"].encode()),
+        return Image(uuid=uuid.UUID(model["uuid"]),
+                     mime_type=model["mimeType"],
+                     w=model["w"],
+                     h=model['h'],
+                     original_filename=model["originalFilename"],
+                     source_url=model["sourceUrl"],
+                     note=model["note"],
+                     raw_data=base64.b64decode(model["base64Data"].encode()) if "base64Data" in model else None,
                      when_updated=None)
 
     def to_json(self):
-        return dict(uuid=self.uuid, mimeType=self.mime_type, w=self.w, h=self.h)
+        return dict(uuid=self.uuid, mimeType=self.mime_type, w=self.w, h=self.h,
+                    originalFilename=self.original_filename, sourceUrl=self.source_url, note=self.note)
 
 @dataclass
 class ImagePlacement:
