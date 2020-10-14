@@ -45,6 +45,8 @@ class ImageModel {
         this.w = w;
         this.h = h;
         this.originalFilename = originalFilename;
+        this.sourceUrl = null;
+        this.note = null;
         this.base64Data = base64Data;
     }
 }
@@ -216,15 +218,16 @@ class Canvas {
 
             filterKey: function(e, dx, dy, dz) {
                 let shouldIgnore = false;
-                if (e.target.tagName.toLowerCase() === "input") {
+                // TODO: this should be improved to instead checking if target is a child of UI
+                if (e.target.tagName.toLowerCase() === "input" || e.target.tagName.toLowerCase() === "textarea") {
                     shouldIgnore = true;
                 }
                 return shouldIgnore;
             }
         })
 
-        this.panzoom.zoomAbs(0, 0, modelInitial.viewTransform.zoom);
-        this.panzoom.moveTo(modelInitial.viewTransform.pan_x, modelInitial.viewTransform.pan_y);
+        this.panzoom.zoomAbs(0, 0, modelInitial.view.zoom);
+        this.panzoom.moveTo(modelInitial.view.panX, modelInitial.view.panY);
 
         // Stream view updates to back-end
         this.panzoom.on('transform', (e) => {
@@ -444,8 +447,12 @@ class Canvas {
     }
 
     _saveTransform(transform) {
+        this.view.panX = transform.x;
+        this.view.panY = transform.y;
+        this.view.zoom = transform.scale;
+
         this.backend.updateModel({
-            viewTransform: {pan_x: transform.x, pan_y: transform.y, zoom: transform.scale},
+            view: this.view,
         })
     }
 

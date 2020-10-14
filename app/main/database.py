@@ -53,6 +53,7 @@ text_placement_table = Table('text_placement', metadata,
 
 view_table = Table('view', metadata,
         Column('uuid', UuidColumn, primary_key=True),
+        Column("name", String(100), nullable=False, server_default="Unnamed"),
         Column("pan_x", Float, nullable=False),
         Column('pan_y', Float, nullable=False),
         Column('zoom', Float, nullable=False),

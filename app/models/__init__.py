@@ -11,11 +11,14 @@ import uuid
 @dataclass
 class View:
     uuid: uuid.UUID
+    name: str
     pan_x: float
     pan_y: float
     zoom: float
     when_updated: Optional[datetime.datetime]
 
+    def to_json(self):
+        return dict(uuid=str(self.uuid), name=self.name, panX=self.pan_x, panY=self.pan_y, zoom=self.zoom)
 
 @dataclass
 class Image:

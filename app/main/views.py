@@ -29,8 +29,7 @@ def get_model():
     ret = dict(images={},
                imagePlacements={},
                textPlacements={},
-               view=dict(uuid=str(view.uuid)),
-               viewTransform=dict(pan_x=view.pan_x, pan_y=view.pan_y, zoom=view.zoom)
+               view=view.to_json(),
                )
 
     image_placements, text_placements = db.get_all_placements_for_view(view)
@@ -68,11 +67,11 @@ def post_model():
             for uuid, model in value.items():
                 placement = models.TextPlacement.from_json(model)
                 db.add_or_update_text_placement(placement)
-        elif key == "viewTransform":
+        elif key == "view":
             # find a view, since we don't handle it properly now
             view = db.get_some_view()
-            view.pan_x = value["pan_x"]
-            view.pan_y = value["pan_y"]
+            view.pan_x = value["panX"]
+            view.pan_y = value["panY"]
             view.zoom = value["zoom"]
             db.save_updates()
 
