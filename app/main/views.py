@@ -1,5 +1,5 @@
 import io
-import uuid
+from uuid import UUID
 
 from flask import g, render_template, request, Blueprint, send_file
 
@@ -23,23 +23,18 @@ def index():
 def get_model():
     db = get_db()
 
-    view = db.get_some_view()
-    # print(view)
-
-    views = db.get_all_views()
+    views = db.get_all_views(True)
 
     ret = dict(images={},
                imagePlacements={},
                textPlacements={},
-               view=view.to_json(),
                views=[view_.to_json() for view_ in views]
                )
 
-    # TODO: determine which view is current.
-    image_placements, text_placements = db.get_all_placements_for_view(view)
+    image_placements, text_placements = db.get_all_placements_for_view(views[0])
 
     for p in image_placements:
-        ret["imagePlacements"][p.uuid] = dict(uuid=p.uuid, imageUuid=p.image_uuid, x=p.x, y=p.y, w=p.w, h=p.h)
+        ret["imagePlacements"][p.uuid] = p.to_json()
 
         # add image metadata
         image = db.get_image_by_uuid(p.image_uuid)
@@ -71,28 +66,24 @@ def post_model():
             for uuid, model in value.items():
                 placement = models.TextPlacement.from_json(model)
                 db.add_or_update_text_placement(placement)
-        elif key == "view":
-            # find a view, since we don't handle it properly now
-            view = db.get_some_view()
-            view.pan_x = value["panX"]
-            view.pan_y = value["panY"]
-            view.zoom = value["zoom"]
-            db.save_updates()
-
+        elif key == "views":
+            for uuid, model in value.items():
+                view = models.View.from_json(model)
+                db.add_or_update_view(view)
     return dict()
 
 
 @main.route('/imagePlacement', methods=['DELETE'])
 def delete_image_placement():
     db = get_db()
-    db.delete_image_placement(uuid.UUID(request.json["uuid"]))
+    db.delete_image_placement(UUID(request.json["uuid"]))
 
     return dict()
 
 @main.route('/textPlacement', methods=['DELETE'])
 def delete_text_placement():
     db = get_db()
-    db.delete_text_placement(uuid.UUID(request.json["uuid"]))
+    db.delete_text_placement(UUID(request.json["uuid"]))
 
     return dict()
 
@@ -109,3 +100,30 @@ def get_image(uuid):
                                                         # this is not the best, because it does not set the new
                                                         # `Cache-Control: immutable` flag
                      )
+
+
+@main.route('/view/<uuid>', methods=['GET'])
+def get_view(uuid):
+    db = get_db()
+
+    view = db.get_view_by_uuid(UUID(uuid))
+
+    ret = dict(images={},
+               imagePlacements={},
+               textPlacements={},
+               view=view.to_json(),
+               )
+
+    image_placements, text_placements = db.get_all_placements_for_view(view)
+
+    for p in image_placements:
+        ret["imagePlacements"][p.uuid] = p.to_json()
+
+        # add image metadata
+        image = db.get_image_by_uuid(p.image_uuid)
+        ret["images"][image.uuid] = image.to_json()
+
+    for p in text_placements:
+        ret["textPlacements"][p.uuid] = p.to_json()
+
+    return ret

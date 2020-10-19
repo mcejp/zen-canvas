@@ -34,6 +34,7 @@ image_table = Table('image', metadata,
 image_placement_table = Table('image_placement', metadata,
         Column('uuid', UuidColumn, primary_key=True),
         Column("image_uuid", UuidColumn, nullable=False),
+        Column('view_uuid', UuidColumn, nullable=False),
         Column('x', Float, nullable=False),
         Column('y', Float, nullable=False),
         Column('w', Float, nullable=False),
@@ -129,6 +130,22 @@ class Database:
 
         self.session.commit()
 
+    def add_or_update_view(self, view: models.View) -> None:
+        view.when_updated = datetime.datetime.now()
+
+        # check if already exists
+        existing = self.session.query(models.View).filter_by(uuid=view.uuid).first()
+        if existing is not None:
+            existing.name = view.name
+            existing.pan_x = view.pan_x
+            existing.pan_y = view.pan_y
+            existing.zoom = view.zoom
+            existing.when_updated = view.when_updated
+        else:
+            self.session.add(view)
+
+        self.session.commit()
+
     def delete_image_placement(self, uuid: uuid.UUID) -> None:
         self.session.query(models.ImagePlacement).filter_by(uuid=uuid).delete()
         self.session.commit()
@@ -138,29 +155,18 @@ class Database:
         self.session.commit()
 
     def get_all_placements_for_view(self, view: models.View) -> ([models.ImagePlacement], [models.TextPlacement]):
-        # TODO: filter on view (once implemented)
-        images = self.session.query(models.ImagePlacement)
-
+        images = self.session.query(models.ImagePlacement).filter_by(view_uuid=view.uuid)
         texts = self.session.query(models.TextPlacement).filter_by(view_uuid=view.uuid)
 
         return images.all(), texts.all()
 
-    def get_all_views(self) -> [models.View]:
-        return self.session.query(models.View).all()
-
-    def get_image_by_uuid(self, uuid: uuid.UUID) -> models.Image:
-        q = self.session.query(models.Image).filter_by(uuid=uuid)
-        image = q.first()
-        assert image is not None
-        return image
-
-    def get_some_view(self) -> models.View:
+    def get_all_views(self, ensure_some_exists: bool) -> [models.View]:
         q = self.session.query(models.View)
 
-        if q.count() == 0:
-            view = models.View(uuid=uuid.uuid4(), pan_x=0, pan_y=0, zoom=1,
-                        when_updated=datetime.datetime.now()    # FIXME: plug in UPDATE/INSERT
-                        )
+        if ensure_some_exists and q.count() == 0:
+            view = models.View(uuid=uuid.uuid4(), name="New board", pan_x=0, pan_y=0, zoom=1,
+                               when_updated=datetime.datetime.now()    # FIXME: plug in UPDATE/INSERT
+                               )
 
             text = models.TextPlacement(uuid=uuid.uuid4(), view_uuid=view.uuid, x=0, y=0,
                                         text="Hello. This is your Zen Canvas. Why not drop some images here?",
@@ -172,7 +178,19 @@ class Database:
 
             q = self.session.query(models.View)
 
-        return q.first()
+        return q.all()
+
+    def get_image_by_uuid(self, uuid: uuid.UUID) -> models.Image:
+        q = self.session.query(models.Image).filter_by(uuid=uuid)
+        image = q.first()
+        assert image is not None
+        return image
+
+    def get_view_by_uuid(self, uuid: uuid.UUID) -> models.View:
+        q = self.session.query(models.View).filter_by(uuid=uuid)
+        view = q.first()
+        assert view is not None
+        return view
 
     def save_updates(self) -> None:
         self.session.commit()

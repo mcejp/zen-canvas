@@ -2,7 +2,7 @@ import base64
 from dataclasses import dataclass
 import datetime
 from typing import Optional
-import uuid
+from uuid import UUID
 
 
 # watch out, SQLalchemy is buggy for dataclass with default values
@@ -10,19 +10,25 @@ import uuid
 
 @dataclass
 class View:
-    uuid: uuid.UUID
+    uuid: UUID
     name: str
     pan_x: float
     pan_y: float
     zoom: float
     when_updated: Optional[datetime.datetime]
 
+    @staticmethod
+    def from_json(model):
+        return View(uuid=UUID(model["uuid"]), name=model["name"],
+                    pan_x=model["panX"], pan_y=model["panY"], zoom=model["zoom"],
+                    when_updated=None)
+
     def to_json(self):
         return dict(uuid=str(self.uuid), name=self.name, panX=self.pan_x, panY=self.pan_y, zoom=self.zoom)
 
 @dataclass
 class Image:
-    uuid: uuid.UUID
+    uuid: UUID
     mime_type: str
     w: int
     h: int
@@ -34,7 +40,7 @@ class Image:
 
     @staticmethod
     def from_json(model):
-        return Image(uuid=uuid.UUID(model["uuid"]),
+        return Image(uuid=UUID(model["uuid"]),
                      mime_type=model["mimeType"],
                      w=model["w"],
                      h=model['h'],
@@ -50,8 +56,9 @@ class Image:
 
 @dataclass
 class ImagePlacement:
-    uuid: uuid.UUID
-    image_uuid: uuid.UUID
+    uuid: UUID
+    image_uuid: UUID
+    view_uuid: UUID
     x: float
     y: float
     w: float
@@ -60,14 +67,18 @@ class ImagePlacement:
 
     @staticmethod
     def from_json(model):
-        return ImagePlacement(uuid.UUID(model["uuid"]), uuid.UUID(model["imageUuid"]),
+        return ImagePlacement(UUID(model["uuid"]), UUID(model["imageUuid"]), UUID(model["viewUuid"]),
                               model["x"], model['y'], model["w"], model['h'],
                               when_updated=None)
 
+    def to_json(self):
+        return dict(uuid=str(self.uuid), imageUuid=str(self.image_uuid), viewUuid=str(self.view_uuid),
+                    x=self.x, y=self.y, w=self.w, h=self.h)
+
 @dataclass
 class TextPlacement:
-    uuid: uuid.UUID
-    view_uuid: uuid.UUID
+    uuid: UUID
+    view_uuid: UUID
     x: float
     y: float
     text: str
@@ -76,7 +87,7 @@ class TextPlacement:
 
     @staticmethod
     def from_json(model):
-        return TextPlacement(uuid.UUID(model["uuid"]), uuid.UUID(model["viewUuid"]),
+        return TextPlacement(UUID(model["uuid"]), UUID(model["viewUuid"]),
                              model["x"], model['y'], model["text"], model['fontSizePx'],
                              when_updated=None)
 

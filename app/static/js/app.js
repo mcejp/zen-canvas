@@ -62,14 +62,16 @@ class ImageModel {
 class ImagePlacementModel {
     /**
      * @param uuid
+     * @param viewUuid
      * @param imageUuid
      * @param x
      * @param y
      * @param w
      * @param h
      */
-    constructor(uuid, imageUuid, x, y, w, h) {
+    constructor(uuid, viewUuid, imageUuid, x, y, w, h) {
         this.uuid = uuid;
+        this.viewUuid = viewUuid;
         this.imageUuid = imageUuid;
         this.x = x;
         this.y = y;
@@ -105,6 +107,20 @@ class TextPlacementModel {
     }
 }
 
+class View {
+    constructor(uuid, name, panX, panY, zoom) {
+        this.uuid = uuid;
+        this.name = name;
+        this.panX = panX;
+        this.panY = panY;
+        this.zoom = zoom;
+    }
+
+    static from(json) {
+        return Object.assign(new View(), json);
+    }
+}
+
 // class ThrottledRequest {
 //     constructor(minInterval) {
 //         this.interval = minInterval;
@@ -131,6 +147,17 @@ class Backend {
         });
     }
 
+    addOrUpdateView(view) {
+        this.updateModel({
+            views: {
+                [view.uuid]: view
+            }
+        });
+    }
+
+    /**
+     * @returns {Promise<{view: Object, views: Object[]}>}
+     */
     async getModel() {
         const response = await fetch("model")
 
@@ -142,6 +169,16 @@ class Backend {
         console.log(model);
 
         return model;
+    }
+
+    async getViewByUuid(uuid) {
+        const response = await fetch(`view/${uuid}`)
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
     }
 
     deleteImagePlacement(uuid) {
@@ -230,8 +267,6 @@ class Canvas {
 
         this.backend = backend;
 
-        this.view = modelInitial.view;
-
         this.panzoom = panzoom(this.div, {
             // maxScale: 5
             beforeMouseDown: function(e) {
@@ -250,22 +285,12 @@ class Canvas {
             }
         })
 
-        this.panzoom.zoomAbs(0, 0, modelInitial.view.zoom);
-        this.panzoom.moveTo(modelInitial.view.panX, modelInitial.view.panY);
-
         // Stream view updates to back-end
         this.panzoom.on('transform', (e) => {
             this._saveTransform(e.getTransform());
         });
 
-        for (const [uuid, placement] of Object.entries(modelInitial.imagePlacements)) {
-            const image = modelInitial.images[placement.imageUuid];
-            this._addImagePlacement(ImagePlacementModel.from(placement), image, null)
-        }
-
-        for (const placement of Object.values(modelInitial.textPlacements)) {
-            this._addTextPlacement(TextPlacementModel.from(placement))
-        }
+        this.setViewFromModel(modelInitial, modelInitial.views[0]);
 
         document.addEventListener("keyup", (ev) => {
             if (ev.target.tagName.toLowerCase() === "input") {
@@ -313,7 +338,7 @@ class Canvas {
             const base64Data = dataUrl.substr(dataUrl.indexOf(",") + 1)
 
             const image = new ImageModel(uuidv4(), mimeType, img.naturalWidth, img.naturalHeight, originalFilename, base64Data);
-            const placement = new ImagePlacementModel(uuidv4(), image.uuid, absX, absY, image.w, image.h);
+            const placement = new ImagePlacementModel(uuidv4(), this.view.uuid, image.uuid, absX, absY, image.w, image.h);
 
             this.backend.updateModel({
                 images: {
@@ -326,6 +351,24 @@ class Canvas {
 
             this._addImagePlacement(placement, image, img);
         })
+    }
+
+    // no filtering! placements in model must be an appropriate subset for the current view
+    setViewFromModel(model, view) {
+        this.div.innerText = "";
+
+        this.view = View.from(view);
+        this.panzoom.zoomAbs(0, 0, this.view.zoom);
+        this.panzoom.moveTo(this.view.panX, this.view.panY);
+
+        for (const [uuid, placement] of Object.entries(model.imagePlacements)) {
+            const image = model.images[placement.imageUuid];
+            this._addImagePlacement(ImagePlacementModel.from(placement), image, null)
+        }
+
+        for (const placement of Object.values(model.textPlacements)) {
+            this._addTextPlacement(TextPlacementModel.from(placement))
+        }
     }
 
     _addImagePlacement(placement, image, img) {
@@ -364,7 +407,10 @@ class Canvas {
         })
 
         img.addEventListener("mousedown", (ev) => {
-            this._select(img, placement, {image: image})
+            const leftMouseButton = 0;
+            if (ev.button === leftMouseButton) {
+                this._select(img, placement, {image: image})
+            }
         })
     }
 
@@ -476,7 +522,9 @@ class Canvas {
         this.view.zoom = transform.scale;
 
         this.backend.updateModel({
-            view: this.view,
+            views: {
+                [this.view.uuid]: this.view,
+            },
         })
     }
 
@@ -538,7 +586,7 @@ window.addEventListener("load", () => {
 
     const tabBar = new TabBar(document.getElementById("tab-bar"), {
         // withCloseButton: true,
-        // newTabButton: true,
+        newTabButton: true,
     });
 
     backend.getModel().then((model) => {
@@ -596,8 +644,40 @@ window.addEventListener("load", () => {
             ev.preventDefault();
         }
 
-        tabBar.setModel({tabs:
-            model.views.map((view) => ({title: view.name})),
+        tabBar.onNewTabButton = (ev) => {
+            const viewModel = new View(uuidv4(), "New board", 0, 0, 1);
+
+            const tabModel = {
+                title: viewModel.name,
+                uuid: viewModel.uuid,
+                view: viewModel,
+            };
+            tabBar.addTab(tabModel, true, true);
+
+            // TODO: update model
+        }
+
+        tabBar.onTabSelected = (tabModel, justCreated) => {
+            if (tabModel.view) {
+                // "Predict" a model for an empty board
+                canvas.setViewFromModel({
+                    imagePlacements: [],
+                    textPlacements: [],
+                }, tabModel.view);
+            }
+            else {
+                backend.getViewByUuid(tabModel.uuid).then((viewModel) => {
+                    canvas.setViewFromModel(viewModel, viewModel.view);
+                })
+            }
+        }
+
+        tabBar.setModel({
+            tabs: model.views.map((view) => ({
+                title: view.name,
+                selected: view === model.views[0],
+                uuid: view.uuid,
+            })),
         });
     })
 })
