@@ -39,6 +39,14 @@ function onBackendError() {
 }
 
 class ImageModel {
+    /**
+     * @param uuid
+     * @param mimeType
+     * @param w
+     * @param h
+     * @param originalFilename
+     * @param base64Data
+     */
     constructor(uuid, mimeType, w, h, originalFilename, base64Data) {
         this.uuid = uuid;
         this.mimeType = mimeType;
@@ -52,6 +60,14 @@ class ImageModel {
 }
 
 class ImagePlacementModel {
+    /**
+     * @param uuid
+     * @param imageUuid
+     * @param x
+     * @param y
+     * @param w
+     * @param h
+     */
     constructor(uuid, imageUuid, x, y, w, h) {
         this.uuid = uuid;
         this.imageUuid = imageUuid;
@@ -67,6 +83,14 @@ class ImagePlacementModel {
 }
 
 class TextPlacementModel {
+    /**
+     * @param uuid
+     * @param viewUuid
+     * @param x
+     * @param y
+     * @param text
+     * @param fontSizePx
+     */
     constructor(uuid, viewUuid, x, y, text, fontSizePx) {
         this.uuid = uuid;
         this.viewUuid = viewUuid;
@@ -512,15 +536,17 @@ class Canvas {
 window.addEventListener("load", () => {
     const backend = new Backend();
 
+    const tabBar = new TabBar(document.getElementById("tab-bar"), {
+        // withCloseButton: true,
+        // newTabButton: true,
+    });
+
     backend.getModel().then((model) => {
         const container = document.getElementById("thecontainer");
 
         const placeholder = document.getElementById("placeholder");
         placeholder.remove();
 
-        // const canvasDiv = document.createElement("div");
-        // canvasDiv.id = "thecanvas";
-        // container.appendChild(canvasDiv)
         const canvasDiv = document.getElementById("thecanvas")
 
         const canvas = new Canvas(canvasDiv, backend, model);
@@ -569,5 +595,9 @@ window.addEventListener("load", () => {
             // Prevent default behavior (Prevent file from being opened)
             ev.preventDefault();
         }
+
+        tabBar.setModel({tabs:
+            model.views.map((view) => ({title: view.name})),
+        });
     })
 })

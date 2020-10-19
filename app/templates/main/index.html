@@ -7,15 +7,78 @@ html, body {
     height: 100%;
     margin: 0;
 
+    font-family: Lato, Helvetica, sans-serif;
+
     background-color: #2a2d32;
     color: #cfd7e2;
+
+    display: flex;
+    flex-direction: column;
+}
+
+#tab-bar {
+    flex-grow: 0;
+}
+
+#tab-bar ul {
+    background-color: rgba(0, 0, 0, 0.5);
+    list-style-type: none;
+    margin: 0;
+    padding-left: 10px;
+    padding-top: 5px;
+    display: flex;
+}
+
+#tab-bar li {
+    background: rgba(0, 0, 0, 0.5);
+    color: #cfd7e2;
+    /*font-size: 24px;*/
+
+    text-transform: uppercase;
+    display: flex;
+
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+#tab-bar li>:first-child {
+    flex-grow: 1;
+    padding: 7px 12px 7px 12px;
+    border-top-left-radius: 4px;
+
+    cursor: pointer;
+}
+
+#tab-bar li>:last-child {
+    flex-grow: 0;
+    padding: 7px 12px 7px 6px;
+    opacity: 0.2;
+
+    cursor: pointer;
+}
+
+#tab-bar li>:first-child:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+#tab-bar li>:last-child:hover {
+    color: #9C1A1C; /* test*/
+    opacity: 1;
+}
+
+#tab-bar li.selected {
+    background-color: #2a2d32;
+    /*font-weight: bold;*/
+
+    /*border-left: 1px solid rgba(255, 255, 255, 0.5);*/
+    /*border-top: 1px solid rgba(255, 255, 255, 0.5);*/
+    /*border-right: 1px solid rgba(255, 255, 255, 0.5);*/
 }
 
 #thecontainer {
     overflow: hidden;
     position: relative;
-    width:100%;
-    height:100%;
+    flex-grow: 1;
 }
 
 #thecanvas {
@@ -69,7 +132,7 @@ html, body {
     align-items: center;
 }
 
-.selected {
+#thecontainer .selected {
     border: 4px dashed lightcoral;
     margin-left: -4px;
     margin-top: -4px;
@@ -92,8 +155,11 @@ html, body {
     <script src='https://unpkg.com/panzoom@9.2.4/dist/panzoom.min.js'></script>
     <script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
     <script src="static/js/app.js" type="text/javascript"></script>
+    <script src="static/js/tab-bar.js" type="text/javascript"></script>
 </head>
 <body>
+<div id="tab-bar"></div>
+
 <div id="thecontainer">
     <div id="thecanvas"></div>
     <div id="placeholder">Your Zen Canvas is loading.</div>

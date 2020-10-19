@@ -137,13 +137,16 @@ class Database:
         self.session.query(models.TextPlacement).filter_by(uuid=uuid).delete()
         self.session.commit()
 
-    def get_all_placements_for_view(self, view: models.View) -> [models.ImagePlacement, models.TextPlacement]:
+    def get_all_placements_for_view(self, view: models.View) -> ([models.ImagePlacement], [models.TextPlacement]):
         # TODO: filter on view (once implemented)
         images = self.session.query(models.ImagePlacement)
 
         texts = self.session.query(models.TextPlacement).filter_by(view_uuid=view.uuid)
 
         return images.all(), texts.all()
+
+    def get_all_views(self) -> [models.View]:
+        return self.session.query(models.View).all()
 
     def get_image_by_uuid(self, uuid: uuid.UUID) -> models.Image:
         q = self.session.query(models.Image).filter_by(uuid=uuid)

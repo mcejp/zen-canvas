@@ -26,12 +26,16 @@ def get_model():
     view = db.get_some_view()
     # print(view)
 
+    views = db.get_all_views()
+
     ret = dict(images={},
                imagePlacements={},
                textPlacements={},
                view=view.to_json(),
+               views=[view_.to_json() for view_ in views]
                )
 
+    # TODO: determine which view is current.
     image_placements, text_placements = db.get_all_placements_for_view(view)
 
     for p in image_placements:
