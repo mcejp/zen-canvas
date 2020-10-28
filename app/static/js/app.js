@@ -166,7 +166,7 @@ class Backend {
         }
 
         const model = await response.json();
-        console.log(model);
+        // console.log(model);
 
         return model;
     }
@@ -224,7 +224,7 @@ class Backend {
             // console.log("recently =>", sendDelay);
         }
         else {
-            console.log("ok, its been", new Date() - this.updateLastTime)
+            // console.log("ok, its been", new Date() - this.updateLastTime)
             // update not scheduled recently/ever
             sendDelay = this.minPushInterval;
         }
@@ -285,12 +285,12 @@ class Canvas {
             }
         })
 
+        this.setViewFromModel(modelInitial, modelInitial.views[0]);
+
         // Stream view updates to back-end
         this.panzoom.on('transform', (e) => {
             this._saveTransform(e.getTransform());
         });
-
-        this.setViewFromModel(modelInitial, modelInitial.views[0]);
 
         document.addEventListener("keyup", (ev) => {
             if (ev.target.tagName.toLowerCase() === "input") {
@@ -554,6 +554,11 @@ class Canvas {
     }
 
     _saveTransform(transform) {
+        if (this.view.panX === transform.x && this.view.panY === transform.y && this.view.zoom === transform.scale) {
+            console.log("_saveTransform: Ignoring spurious event")
+            return;
+        }
+
         this.view.panX = transform.x;
         this.view.panY = transform.y;
         this.view.zoom = transform.scale;
