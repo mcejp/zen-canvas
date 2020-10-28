@@ -341,11 +341,6 @@ class Canvas {
         img.style.width = `100%`;
         img.style.height = `100%`;
 
-        // Do not auto-play GIFs
-        if (mimeType === "image/gif") {
-            img.classList.add("freezeframe");
-        }
-
         let loadTriggered = false;
 
         img.addEventListener("load", () => {
@@ -375,8 +370,9 @@ class Canvas {
 
             this._addImagePlacement(placement, image, wrapper);
 
+            // Do not auto-play GIFs
             if (image.mimeType === "image/gif") {
-                new Freezeframe(img, {overlay: true});
+                new Freezeframe(img, {overlay: true, warnings: false});
             }
         })
     }
@@ -418,7 +414,7 @@ class Canvas {
 
             // Do not auto-play GIFs
             if (image.mimeType === "image/gif") {
-                new Freezeframe(real_img, {overlay: true});
+                new Freezeframe(real_img, {overlay: true, warnings: false});
             }
         }
         else {
