@@ -325,14 +325,38 @@ class Canvas {
         // console.log("drop at", clientX, clientY);
         const [absX, absY] = this._clientToCanvasCoords(clientX, clientY);
 
+        // Wrap in a <div> so that Freezeframe can work properly
+        // TODO: DRY!
+        const wrapper = document.createElement("div");
+        wrapper.className = "image-placement";
+        wrapper.style.left = `${absX}px`;
+        wrapper.style.top =  `${absY}px`;
+        this.div.appendChild(wrapper);
+
         const img = document.createElement("img");
-        img.className = "image-placement";
-        img.style.left = `${absX}px`;
-        img.style.top =  `${absY}px`;
+        wrapper.append(img);
         img.src = dataUrl;
-        this.div.appendChild(img);
+
+        // Make sure the image scales when container is resized by user
+        img.style.width = `100%`;
+        img.style.height = `100%`;
+
+        // Do not auto-play GIFs
+        if (mimeType === "image/gif") {
+            img.classList.add("freezeframe");
+        }
+
+        let loadTriggered = false;
 
         img.addEventListener("load", () => {
+            if (loadTriggered) {
+                // needed because freezeframe will trigger load again, so we would spawn a shit ton of placements
+                return;
+            }
+            else {
+                loadTriggered = true;
+            }
+
             // create models
             // TODO: de-duplicate images
             const base64Data = dataUrl.substr(dataUrl.indexOf(",") + 1)
@@ -349,7 +373,11 @@ class Canvas {
                 }
             });
 
-            this._addImagePlacement(placement, image, img);
+            this._addImagePlacement(placement, image, wrapper);
+
+            if (image.mimeType === "image/gif") {
+                new Freezeframe(img, {overlay: true});
+            }
         })
     }
 
@@ -373,12 +401,25 @@ class Canvas {
 
     _addImagePlacement(placement, image, img) {
         if (!img) {
-            img = document.createElement("img");
+            // Wrap in a <div> so that Freezeframe can work properly
+            img = document.createElement("div");
             img.className = "image-placement";
             img.style.left = `${placement.x}px`;
             img.style.top = `${placement.y}px`;
-            img.src = `image/${placement.imageUuid}`;
             this.div.appendChild(img);
+
+            const real_img = document.createElement("img");
+            img.append(real_img);
+            real_img.src = `image/${placement.imageUuid}`;
+
+            // Make sure the image scales when container is resized by user
+            real_img.style.width = `100%`;
+            real_img.style.height = `100%`;
+
+            // Do not auto-play GIFs
+            if (image.mimeType === "image/gif") {
+                new Freezeframe(real_img, {overlay: true});
+            }
         }
         else {
             // pre-existing <img> tag, proceed with setting up interactivity
