@@ -292,30 +292,6 @@ class Canvas {
             this._saveTransform(e.getTransform());
         });
 
-        document.addEventListener("keyup", (ev) => {
-            if (ev.target.tagName.toLowerCase() === "input") {
-                return;
-            }
-
-            const shortcuts = {
-                // delete selected
-                Delete: (ev) =>     this._deleteSelection(),
-                // clear selection
-                Escape: (ev) =>     this._select(null),
-                // scale selection up
-                PageUp: (ev) =>     this._resizeSelection(1),
-                // scale selection down
-                PageDown: (ev) =>   this._resizeSelection(-1),
-                // insert Text object
-                t: (ev) =>          this._addTextAtMouse("Click to edit me!"),
-            }
-
-            if (shortcuts.hasOwnProperty(ev.key)) {
-                shortcuts[ev.key](ev);
-                console.log("handled", ev);
-            }
-        });
-
         document.addEventListener("mousemove", (ev) => {
             [this.clientX, this.clientY] = [ev.clientX, ev.clientY];
         });
@@ -721,12 +697,47 @@ window.addEventListener("load", () => {
             }
         }
 
+        tabBar.onTabRenamed = (tabModel) => {
+            // TODO: now this will only work for current view which is sub-optimal
+            // (+ it's a hack directly accessing the Canvas' view)
+            if (tabModel.uuid === canvas.view.uuid) {
+                canvas.view.name = tabModel.title;
+                backend.addOrUpdateView(canvas.view);
+            }
+        }
+
         tabBar.setModel({
             tabs: model.views.map((view) => ({
                 title: view.name,
                 selected: view === model.views[0],
                 uuid: view.uuid,
             })),
+        });
+
+        document.addEventListener("keyup", (ev) => {
+            if (ev.target.tagName.toLowerCase() === "input") {
+                return;
+            }
+
+            const shortcuts = {
+                // delete selected
+                Delete: (ev) =>     canvas._deleteSelection(),
+                // clear selection
+                Escape: (ev) =>     canvas._select(null),
+                // rename board
+                F2: (ev) =>         tabBar.renameCurrentTab(),
+                // scale selection up
+                PageUp: (ev) =>     canvas._resizeSelection(1),
+                // scale selection down
+                PageDown: (ev) =>   canvas._resizeSelection(-1),
+                // insert Text object
+                t: (ev) =>          canvas._addTextAtMouse("Click to edit me!"),
+            }
+
+            if (shortcuts.hasOwnProperty(ev.key)) {
+                shortcuts[ev.key](ev);
+                console.log("handled", ev);
+            }
         });
     })
 })

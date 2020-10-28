@@ -47,6 +47,10 @@ class TabBar {
         }
     }
 
+    renameCurrentTab() {
+        this._makeTabTitleEditable(this.selectionLi, this.selectionModel);
+    }
+
     /**
      * @param {Object} model
      * @param {{title: string}[]} model.tabs
@@ -80,29 +84,18 @@ class TabBar {
         const li = document.createElement("li");
         this.ul.appendChild(li);
 
+        // Is this the right way?
         if (tabModel.selected) {
             li.classList.add("selected");
             this.selectionLi = li;
+            this.selectionModel = tabModel;
         }
 
         const label = document.createElement("div");
         li.appendChild(label);
 
         if (editTitle) {
-            const input = document.createElement("input");
-            label.appendChild(input);
-            input.type = "text";
-            input.value = tabModel.title;
-
-            input.addEventListener("keydown", (ev) => {
-                if (ev.key === "Enter") {
-                    label.innerText = input.value;
-
-                    if (this.onTabRenamed) {
-                        this.onTabRenamed(tabModel, input.value);
-                    }
-                }
-            });
+            this._makeTabTitleEditable(li, tabModel);
         }
         else {
             label.innerText = tabModel.title;
@@ -128,6 +121,33 @@ class TabBar {
         }
 
         return li;
+    }
+
+    _makeTabTitleEditable(tabLi, tabModel) {
+        const label = tabLi.firstChild;     // FIXME: fragile code
+
+        const input = document.createElement("input");
+        label.innerHTML = "";
+        label.appendChild(input);
+
+        input.type = "text";
+        input.value = tabModel.title;
+        input.select();
+
+        input.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") {
+                label.innerText = input.value;
+                tabModel.title = input.value;
+
+                // If we want to block the rename, a separate event should be used for that
+                if (this.onTabRenamed) {
+                    this.onTabRenamed(tabModel);
+                }
+            }
+            else if (ev.key === "Escape") {
+                label.innerText = tabModel.title;
+            }
+        });
     }
 
     /**
