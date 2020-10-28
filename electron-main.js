@@ -87,17 +87,23 @@ const killPythonSubprocesses = main_pid => {
 
 const createMainWindow = () => {
   // Create the browser mainWindow
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+  const splashWindow = new BrowserWindow({
+    width: 640,
+    height: 451,
     // transparent: true, // transparent header bar
     icon: __dirname + "/icon.png",
     // fullscreen: true,
     // opacity:0.8,
-    // darkTheme: true,
-    // frame: false,
-    resizeable: true
+    darkTheme: true,
+    frame: false,
+    resizeable: true,
+    backgroundColor: '#2f363c',
+    show: false,
   });
+
+  // Only drawback of opening the image file directly is that it is draggable
+  splashWindow.loadFile(__dirname + "/electron-resources/splash.png");
+  splashWindow.on("ready-to-show", () => splashWindow.show());
 
   // Now wait for the backend server start up. Continuously poll the HTTP endpoint until we receive a page.
   // TODO: At some point, we should time out and display an error message
@@ -126,8 +132,37 @@ const createMainWindow = () => {
       //   return;
       // }
 
+      // Create the browser mainWindow
+      mainWindow = new BrowserWindow({
+        width: 1280,
+        height: 902,
+        // transparent: true, // transparent header bar
+        icon: __dirname + "/icon.png",
+        // fullscreen: true,
+        // opacity:0.8,
+        darkTheme: true,
+        frame: false,
+        resizeable: true,
+        backgroundColor: '#2f363c',
+        show: false,
+      });
+
       // Load the index page
       mainWindow.loadURL(url);
+
+      mainWindow.on("ready-to-show", () => {
+        splashWindow.close();
+        mainWindow.show();
+
+        // Open the DevTools.
+        //mainWindow.webContents.openDevTools();
+      });
+
+      // Emitted when the mainWindow is closed.
+      mainWindow.on("closed", function() {
+        // Dereference the mainWindow object
+        mainWindow = null;
+      });
     }).on('error', (e) => {
       console.error(`Got error: ${e.message}`);
 
@@ -138,15 +173,6 @@ const createMainWindow = () => {
 
   const url = "http://localhost:5000/";
   pingServerAndNavigateIfSuccessful(url);
-
-  // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
-
-  // Emitted when the mainWindow is closed.
-  mainWindow.on("closed", function() {
-    // Dereference the mainWindow object
-    mainWindow = null;
-  });
 };
 
 // This method will be called when Electron has finished

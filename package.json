@@ -24,7 +24,8 @@
     "files": [
       "electron-main.js",
       "icon.png",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "electron-resources/*"
     ],
     "extraResources": [
       {
