@@ -3,6 +3,7 @@
 const { app, BrowserWindow } = require("electron");
 const http = require('http');
 const path = require("path");
+const psTree = require("ps-tree");
 
 // Keep a global reference of the mainWindowdow object, if you don't, the mainWindowdow will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -49,40 +50,40 @@ const startPythonSubprocess = () => {
 };
 
 const killPythonSubprocesses = main_pid => {
-  const python_script_name = path.basename(getPythonScriptPath());
+  // Not so easy! PyInstaller bundle spawns children from the top-level process, but doesn't propagate signals to them
+  // subpy.kill();
+
+  // const python_script_name = path.basename(getPythonScriptPath());
   let cleanup_completed = false;
-  const psTree = require("ps-tree");
+
+  // Find & kill all the spawned python processes
   psTree(main_pid, function(err, children) {
     let python_pids = children
       .filter(function(el) {
-        // return el.COMMAND === python_script_name;
-
-        // Spawned command in bundle will be run_app or run_app.exe, so we use this heuristic
+        // Spawned command in bundle will be zen-canvas-backend or zen-canvas-backend.exe, so we use this heuristic
+        // Outside of bundle we should not bother with this shit at all and just subpy.kill() later
         return el.COMMAND.indexOf(PY_MODULE) === 0;
       })
       .map(function(p) {
         console.log("killPythonSubprocesses", p);
         return p.PID;
       });
-    // kill all the spawned python processes
+
     python_pids.forEach(function(pid) {
       process.kill(pid);
     });
+
+    subpy.kill();   // This is also needed when running outside of bundle (= not using PyInstaller)
     subpy = null;
     cleanup_completed = true;
   });
+
   return new Promise(function(resolve, reject) {
     (function waitForSubProcessCleanup() {
       if (cleanup_completed) return resolve();
       setTimeout(waitForSubProcessCleanup, 30);
     })();
   });
-
-  // Not so easy! PyInstaller bundle spawns children from the top-level process, but doesn't propagate signals to them
-  // return new Promise(function(resolve, reject) {
-  //   subpy.kill();
-  //   return resolve();
-  // });
 };
 
 const createMainWindow = () => {
@@ -141,7 +142,6 @@ const createMainWindow = () => {
         // fullscreen: true,
         // opacity:0.8,
         darkTheme: true,
-        frame: false,
         resizeable: true,
         backgroundColor: '#2f363c',
         show: false,
