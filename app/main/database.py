@@ -154,6 +154,14 @@ class Database:
         self.session.query(models.TextPlacement).filter_by(uuid=uuid).delete()
         self.session.commit()
 
+    def delete_view(self, uuid: uuid.UUID) -> None:
+        self.session.query(models.ImagePlacement).filter_by(view_uuid=uuid).delete()
+        self.session.query(models.TextPlacement).filter_by(view_uuid=uuid).delete()
+        self.session.query(models.View).filter_by(uuid=uuid).delete()
+
+        # TODO: also garbage-collect unreferenced images at this point
+        self.session.commit()
+
     def get_all_placements_for_view(self, view: models.View) -> ([models.ImagePlacement], [models.TextPlacement]):
         images = self.session.query(models.ImagePlacement).filter_by(view_uuid=view.uuid)
         texts = self.session.query(models.TextPlacement).filter_by(view_uuid=view.uuid)

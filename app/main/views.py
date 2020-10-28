@@ -127,3 +127,11 @@ def get_view(uuid):
         ret["textPlacements"][p.uuid] = p.to_json()
 
     return ret
+
+
+@main.route('/view/<uuid>', methods=['DELETE'])
+def delete_view(uuid):
+    db = get_db()
+    db.delete_view(UUID(uuid))
+
+    return dict()

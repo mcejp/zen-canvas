@@ -201,6 +201,10 @@ class Backend {
         });
     }
 
+    deleteView(uuid) {
+        const promise = fetch(`view/${uuid}`, {method: "DELETE"});
+    }
+
     // FIXME: make sure we do not keep uploading the image over and over!
     updateImage(image) {
         this.updateModel({
@@ -610,7 +614,7 @@ window.addEventListener("load", () => {
     const backend = new Backend();
 
     const tabBar = new TabBar(document.getElementById("tab-bar"), {
-        // withCloseButton: true,
+        withCloseButton: true,
         newTabButton: true,
     });
 
@@ -704,6 +708,18 @@ window.addEventListener("load", () => {
                 canvas.view.name = tabModel.title;
                 backend.addOrUpdateView(canvas.view);
             }
+        }
+
+        tabBar.onBeforeTabClose = (tabModel) => {
+            // FIXME: do we want to allow deleting the last board?
+
+            return window.confirm(`Are you sure you want to DELETE the tab "${tabModel.title}"?\n\nIt is NOT POSSIBLE to undo this operation.`);
+        }
+
+        tabBar.onTabClosed = (tabModel) => {
+            backend.deleteView(tabModel.uuid);
+
+            // TODO: here we have to also change view to a board that still exists...
         }
 
         tabBar.setModel({

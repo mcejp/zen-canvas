@@ -113,6 +113,18 @@ class TabBar {
             // closeButton.innerHTML = "&#x00D7;";     // aka ×
             closeButton.innerHTML = "&#x2716;";     // aka ✖
             control.appendChild(closeButton);
+
+            closeButton.addEventListener("click", (ev) => {
+                if (this.onBeforeTabClose && !this.onBeforeTabClose(tabModel)) {
+                    return;
+                }
+
+                li.remove();
+
+                if (this.onTabClosed) {
+                    this.onTabClosed(tabModel);
+                }
+            });
         }
 
         // Ensure that (+) button is always at the end
