@@ -379,6 +379,9 @@ class Canvas {
 
     // no filtering! placements in model must be an appropriate subset for the current view
     setViewFromModel(model, view) {
+        // Clear any selection there might already be
+        this._select(null);
+
         this.div.innerText = "";
 
         this.view = View.from(view);
@@ -511,16 +514,20 @@ class Canvas {
 
     _deleteSelection() {
         if (this.selection !== null) {
-            this.selection.element.remove();
+            // First, unselect the thing to clear the UI
+            const element = this.selection.element;
+            const placement = this.selection.placement;
+            this._select(null);
 
-            if (this.selection.placement instanceof ImagePlacementModel) {
-                this.backend.deleteImagePlacement(this.selection.placement.uuid);
-            }
-            else if (this.selection.placement instanceof TextPlacementModel) {
-                this.backend.deleteTextPlacement(this.selection.placement.uuid);
-            }
+            // Now actually remove the element & update model
+            element.remove();
 
-            this.selection = null;
+            if (placement instanceof ImagePlacementModel) {
+                this.backend.deleteImagePlacement(placement.uuid);
+            }
+            else if (placement instanceof TextPlacementModel) {
+                this.backend.deleteTextPlacement(placement.uuid);
+            }
         }
     }
 
@@ -590,7 +597,7 @@ class Canvas {
 
                 const bindImageProperty = (selector, attributeName) => {
                     const input = editor.querySelector(selector);
-                    console.log(image, attributeName);
+                    // console.log(image, attributeName);
                     input.value = image[attributeName];
 
                     input.addEventListener("input", (ev) => {
