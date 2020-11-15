@@ -642,7 +642,7 @@ window.addEventListener("load", () => {
                         const file = ev.dataTransfer.items[i].getAsFile();
                         console.log('A:... file[' + i + '].name = ' + file.name);
 
-                        if (file.type === "image/gif" || file.type === "image/jpeg" || file.type === "image/png") {
+                        if (file.type === "image/gif" || file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp") {
                             var reader = new FileReader();
 
                             reader.onload = (ev2) => {
