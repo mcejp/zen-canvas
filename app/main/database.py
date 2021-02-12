@@ -207,7 +207,6 @@ def get_db():
     """Opens a new database connection if there is none yet for the
     current application context.
     """
-    # FIXME: teardown per https://flask.palletsprojects.com/en/0.12.x/tutorial/dbcon/
     if not hasattr(g, 'db'):
         g.db = Database("inspired.sqlite")
     return g.db
