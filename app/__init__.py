@@ -13,6 +13,8 @@ from config import config
 # bootstrap = Bootstrap()
 
 from .main.database import Database
+from .main.session import Config, Session
+
 
 def create_app(config_name):
     app = Flask(__name__, instance_relative_config=True)
@@ -23,6 +25,10 @@ def create_app(config_name):
     # Eg.
     # db.init_app(app)
     # bootstrap.init_app(app)
+
+    config_mgr = Config()
+    app.session = Session(config_mgr)
+    app.session.open_most_recent_or_new_document()
 
     # This is the main Blueprint
     from .main.views import main as main_blueprint

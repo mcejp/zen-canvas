@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from flask import g
+from flask import current_app, g
 
 import sqlalchemy
 from sqlalchemy import create_engine, desc, TypeDecorator
@@ -208,5 +208,7 @@ def get_db():
     current application context.
     """
     if not hasattr(g, 'db'):
-        g.db = Database("inspired.sqlite")
+        p = current_app.session.get_open_document_path()
+        assert p is not None
+        g.db = Database(p)
     return g.db
