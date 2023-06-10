@@ -2,7 +2,13 @@
 
 ![screenshot](doc/screenshot.jpg)
 
-    manage.py runserver
+## Development
+
+1. create a virtual envioronment and install packages from requirements.txt
+2. execute `manage.py runserver`
+3. navigate to http://127.0.0.1:5000
+
+Q: how to set DB path?
 
 ## Controls
 

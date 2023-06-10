@@ -96,7 +96,7 @@ def get_image(uuid):
                      # as_attachment=True,
                      # attachment_filename=image.original_filename,
                      mimetype=image.mime_type,
-                     cache_timeout=365 * 24 * 3600,     # cache up to a year
+                     max_age=365 * 24 * 3600,           # cache up to a year
                                                         # this is not the best, because it does not set the new
                                                         # `Cache-Control: immutable` flag
                      )
